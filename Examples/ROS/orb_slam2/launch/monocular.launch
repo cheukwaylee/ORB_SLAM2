@@ -6,7 +6,7 @@
   <node pkg="rosbag" type="play" name="rosbag" args="$(arg bagfile)" />
 
   <!-- ORB_SLAM2 Mono -->
-  <node pkg="orb_slam2" type="mono" name="mono" output="screen" args="$(find orb_slam2)../../../Vocabulary/ORBvoc.txt $(find orb_slam2)../../../Examples/Monocular/KITTI03.yaml">
+  <node pkg="orb_slam2" type="mono" name="mono" output="screen" args="$(find orb_slam2)../../../Vocabulary/ORBvoc.txt $(find orb_slam2)/cfg/mono.yaml">
     <remap from="~image_raw" to="/kitti_stereo/left/image_rect"/>
     <remap from="~camera_info" to="/kitti_stereo/left/camera_info"/>
   </node>
