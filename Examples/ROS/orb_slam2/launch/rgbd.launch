@@ -11,8 +11,9 @@
 
   <!-- ORB_SLAM2 RGBD -->
   <node pkg="orb_slam2" type="rgbd" name="rgbd" output="screen" args="$(find orb_slam2)../../../Vocabulary/ORBvoc.txt $(find orb_slam2)../../../Examples/RGB-D/TUM1.yaml">
-    <remap from="/camera/rgb/image_raw" to="/camera/rgb/image_color"/>
-    <remap from="camera/depth_registered/image_raw" to="/camera/depth/image"/>
+    <remap from="~image_raw" to="/camera/rgb/image_color"/>
+    <remap from="~depth_image_raw" to="/camera/depth/image"/>
+    <remap from="~camera_info" to="/camera/rgb/camera_info"/>
   </node>
 
 </launch>

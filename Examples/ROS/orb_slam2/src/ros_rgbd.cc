@@ -19,22 +19,39 @@
 */
 
 
-#include<iostream>
-#include<algorithm>
-#include<fstream>
-#include<chrono>
+#include <iostream>
+#include <algorithm>
+#include <fstream>
+#include <chrono>
 
-#include<ros/ros.h>
+#include <ros/ros.h>
 #include <cv_bridge/cv_bridge.h>
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
 
-#include<opencv2/core/core.hpp>
+#include <sensor_msgs/Image.h>
+#include <sensor_msgs/CameraInfo.h>
 
-#include"../../../include/System.h"
+#include <opencv2/core/core.hpp>
+
+#include "../../../include/System.h"
 
 using namespace std;
+using namespace cv;
+
+cv::Mat K; //camera matrix
+cv::Mat D; //distoration matrix
+int img_width;
+int img_height;
+float bf; //baseline*f
+float fps;
+int rgb; //0: BGR, 1: RGB. It is ignored if images are grayscale
+
+
+bool camera_info_initialized = false;
+
+ros::Subscriber camera_info_sub;
 
 class ImageGrabber
 {
@@ -46,6 +63,46 @@ public:
     ORB_SLAM2::System* mpSLAM;
 };
 
+void cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& msg)
+{
+	ROS_INFO("camera info msg");
+	K = Mat::zeros(3, 3, CV_32FC1);
+    D = Mat::zeros(5, 1, CV_32FC1);
+    cout << "line: " << __LINE__ << endl;
+    float fx = msg->K[0];
+    float fy = msg->K[4];
+    float cx = msg->K[2];
+    float cy = msg->K[5];
+    cout << "line: " << __LINE__ << endl;
+    K.at<float>(0, 0) = fx;
+    K.at<float>(1, 1) = fy;
+    K.at<float>(0, 2) = cx;
+    K.at<float>(1, 2) = cy;
+    K.at<float>(2, 2) = 1;
+    cout << "line: " << __LINE__ << endl;
+    if(msg->D.size() == 5)
+    {
+	    D.at<float>(0) = msg->D[0];
+	    D.at<float>(1) = msg->D[1];
+	    D.at<float>(2) = msg->D[2];
+	    D.at<float>(3) = msg->D[3];
+	    D.at<float>(4) = msg->D[4];
+    }
+
+    img_width = msg->width;
+    img_height = msg->height;
+    cout << "line: " << __LINE__ << endl;
+	// baseline = fabs(msg->P[3]/fx);  
+	bf = fabs(msg->P[3]);  
+	rgb = 1; //todo
+	fps = 30;
+    cout << "baseline: " << bf/fx << "\n fx:  " << fx << "\nfy: " << fy << "\ncx: " << cx << "\ncy: " << cy << endl;
+    camera_info_initialized = true;
+    cout << "line: " << __LINE__ << endl;
+    camera_info_sub.shutdown();
+}
+
+
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "RGBD");
@@ -56,17 +113,29 @@ int main(int argc, char **argv)
         cerr << endl << "Usage: rosrun ORB_SLAM2 RGBD path_to_vocabulary path_to_settings" << endl;        
         ros::shutdown();
         return 1;
-    }    
+    }
+
+    ros::NodeHandle nh("~");
+
+    camera_info_sub = nh.subscribe("camera_info", 1000, cameraInfoCallback);
+    ros::Rate loop_rate(50);
+    while(ros::ok())
+    {
+
+    	ros::spinOnce();
+    	if(camera_info_initialized)
+    	{
+    		break;
+    	}
+    	loop_rate.sleep();
+    }
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
-    ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::RGBD,true);
-
+    ORB_SLAM2::System SLAM(argv[1],argv[2], K,  D, img_width, img_height, bf, fps, rgb, ORB_SLAM2::System::RGBD,true);  
     ImageGrabber igb(&SLAM);
 
-    ros::NodeHandle nh;
-
-    message_filters::Subscriber<sensor_msgs::Image> rgb_sub(nh, "/camera/rgb/image_raw", 1);
-    message_filters::Subscriber<sensor_msgs::Image> depth_sub(nh, "camera/depth_registered/image_raw", 1);
+    message_filters::Subscriber<sensor_msgs::Image> rgb_sub(nh, "image_raw", 1);
+    message_filters::Subscriber<sensor_msgs::Image> depth_sub(nh, "depth_image_raw", 1);
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> sync_pol;
     message_filters::Synchronizer<sync_pol> sync(sync_pol(10), rgb_sub,depth_sub);
     sync.registerCallback(boost::bind(&ImageGrabber::GrabRGBD,&igb,_1,_2));
@@ -86,6 +155,9 @@ int main(int argc, char **argv)
 
 void ImageGrabber::GrabRGBD(const sensor_msgs::ImageConstPtr& msgRGB,const sensor_msgs::ImageConstPtr& msgD)
 {
+    
+	if(!camera_info_initialized) return;
+
     // Copy the ros image message to cv::Mat.
     cv_bridge::CvImageConstPtr cv_ptrRGB;
     try
