@@ -61,6 +61,18 @@ public:
     // Initialize the SLAM system. It launches the Local Mapping, Loop Closing and Viewer threads.
     System(const string &strVocFile, const string &strSettingsFile, const eSensor sensor, const bool bUseViewer = true);
 
+    System(const string &strVocFile, 
+    const string &strSettingsFile, 
+    const cv::Mat K, //camera matrix
+    const cv::Mat D, //distoration matrix
+    int img_width,
+    int img_height,
+    float bf, //baseline*f
+    float fps,
+    int rgb, //0: BGR, 1: RGB. It is ignored if images are grayscale
+    const eSensor sensor,
+    const bool bUseViewer);
+
     // Proccess the given stereo frame. Images must be synchronized and rectified.
     // Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
     // Returns the camera pose (empty if tracking fails).

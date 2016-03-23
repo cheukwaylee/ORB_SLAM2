@@ -9,6 +9,7 @@
   <node pkg="orb_slam2" type="stereo" name="stereo" output="screen" args="$(find orb_slam2)../../../Vocabulary/ORBvoc.txt $(find orb_slam2)../../../Examples/Stereo/KITTI03.yaml">
     <remap from="/camera/left/image_raw" to="/kitti_stereo/left/image_rect"/>
     <remap from="/camera/right/image_raw" to="/kitti_stereo/right/image_rect"/>
+    <remap from="/right_camera_info" to="/kitti_stereo/right/camera_info"/>
   </node>
 
 </launch>

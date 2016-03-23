@@ -148,6 +148,90 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
 
 }
 
+Tracking::Tracking(System *pSys, 
+    ORBVocabulary* pVoc, 
+    FrameDrawer *pFrameDrawer, 
+    MapDrawer *pMapDrawer, 
+    Map *pMap, 
+    KeyFrameDatabase* pKFDB, 
+    const string &strSettingPath, 
+    const cv::Mat K, //camera matrix
+    const cv::Mat D, //distoration matrix
+    float bf, //baseline*f
+    float fps,
+    int rgb, //0: BGR, 1: RGB. It is ignored if images are grayscale
+    const int sensor):
+    mState(NO_IMAGES_YET), mSensor(sensor), mbOnlyTracking(false), mbVO(false), mpORBVocabulary(pVoc),
+    mpKeyFrameDB(pKFDB), mpInitializer(static_cast<Initializer*>(NULL)), mpSystem(pSys),
+    mpFrameDrawer(pFrameDrawer), mpMapDrawer(pMapDrawer), mpMap(pMap), mnLastRelocFrameId(0)
+{
+    // Load camera parameters from settings file
+    K.copyTo(mK);
+    D.copyTo(mDistCoef);
+    mbf = bf;
+    mMaxFrames = fps;
+
+    cout << endl << "Camera Parameters: " << endl;
+    cout << "- fx: " << mK.at<float>(0, 0) << endl;
+    cout << "- fy: " << mK.at<float>(1, 1) << endl;
+    cout << "- cx: " << mK.at<float>(0, 2) << endl;
+    cout << "- cy: " << mK.at<float>(1, 2) << endl;
+
+    cout << "- k1: " << mDistCoef.at<float>(0) << endl;
+    cout << "- k2: " << mDistCoef.at<float>(1) << endl;
+    if(mDistCoef.rows==5)
+        cout << "- k3: " << mDistCoef.at<float>(4) << endl;
+    cout << "- p1: " << mDistCoef.at<float>(2) << endl;
+    cout << "- p2: " << mDistCoef.at<float>(3) << endl;
+    cout << "- fps: " << fps << endl;
+
+    mbRGB = rgb;
+
+    if(mbRGB)
+        cout << "- color order: RGB (ignored if grayscale)" << endl;
+    else
+        cout << "- color order: BGR (ignored if grayscale)" << endl;
+
+    // Load ORB parameters
+    cv::FileStorage fSettings(strSettingPath, cv::FileStorage::READ);
+    int nFeatures = fSettings["ORBextractor.nFeatures"];
+    float fScaleFactor = fSettings["ORBextractor.scaleFactor"];
+    int nLevels = fSettings["ORBextractor.nLevels"];
+    int fIniThFAST = fSettings["ORBextractor.iniThFAST"];
+    int fMinThFAST = fSettings["ORBextractor.minThFAST"];
+
+    mpORBextractorLeft = new ORBextractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
+
+    if(sensor==System::STEREO)
+        mpORBextractorRight = new ORBextractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
+
+    if(sensor==System::MONOCULAR)
+        mpIniORBextractor = new ORBextractor(2*nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
+
+    cout << endl  << "ORB Extractor Parameters: " << endl;
+    cout << "- Number of Features: " << nFeatures << endl;
+    cout << "- Scale Levels: " << nLevels << endl;
+    cout << "- Scale Factor: " << fScaleFactor << endl;
+    cout << "- Initial Fast Threshold: " << fIniThFAST << endl;
+    cout << "- Minimum Fast Threshold: " << fMinThFAST << endl;
+
+    if(sensor==System::STEREO || sensor==System::RGBD)
+    {
+        mThDepth = mbf*(float)fSettings["ThDepth"]/K.at<float>(0, 0);
+        cout << endl << "Depth Threshold (Close/Far Points): " << mThDepth << endl;
+    }
+
+    if(sensor==System::RGBD)
+    {
+        mDepthMapFactor = fSettings["DepthMapFactor"];
+        if(mDepthMapFactor==0)
+            mDepthMapFactor=1;
+        else
+            mDepthMapFactor = 1.0f/mDepthMapFactor;
+    }
+
+}
+
 void Tracking::SetLocalMapper(LocalMapping *pLocalMapper)
 {
     mpLocalMapper=pLocalMapper;
