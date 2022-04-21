@@ -50,15 +50,18 @@ public:
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "RGBD");
+    ros::init(argc, argv, "Stereo");
     ros::start();
 
-    if(argc != 4)
-    {
-        cerr << endl << "Usage: rosrun ORB_SLAM2 Stereo path_to_vocabulary path_to_settings do_rectify" << endl;
-        ros::shutdown();
-        return 1;
-    }    
+    // if(argc != 4)
+    // {
+    //     cerr << endl << "Usage: rosrun ORB_SLAM2 Stereo path_to_vocabulary path_to_settings do_rectify" << endl;
+    //     ros::shutdown();
+    //     return 1;
+    // }    
+    argv[1] = "/home/cw/code/ORB_SLAM2/Vocabulary/ORBvoc.txt";
+    argv[2] = "/home/cw/code/ORB_SLAM2/Examples/Stereo/KITTI00-02.yaml";
+    argv[3] = "0";
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
     ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::STEREO,true);
@@ -109,8 +112,8 @@ int main(int argc, char **argv)
 
     ros::NodeHandle nh;
 
-    message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, "/camera/left/image_raw", 1);
-    message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, "camera/right/image_raw", 1);
+    message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, "/camera/infra1/image_rect_raw", 1);
+    message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, "/camera/infra2/image_rect_raw", 1);
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> sync_pol;
     message_filters::Synchronizer<sync_pol> sync(sync_pol(10), left_sub,right_sub);
     sync.registerCallback(boost::bind(&ImageGrabber::GrabStereo,&igb,_1,_2));
