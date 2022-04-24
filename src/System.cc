@@ -26,6 +26,8 @@
 #include <pangolin/pangolin.h>
 #include <iomanip>
 
+#include<unistd.h> // for usleep
+
 namespace ORB_SLAM2
 {
 

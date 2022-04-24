@@ -25,6 +25,8 @@
 
 #include<mutex>
 
+#include<unistd.h> // for usleep
+
 namespace ORB_SLAM2
 {
 

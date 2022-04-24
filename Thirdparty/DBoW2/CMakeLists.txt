@@ -31,6 +31,11 @@ if(NOT OpenCV_FOUND)
       message(FATAL_ERROR "OpenCV > 2.4.3 not found.")
    endif()
 endif()
+# add to check opencv version
+message(STATUS "OpenCV_DIR = ${OpenCV_DIR}")
+message(STATUS "OpenCV_INCLUDE_DIRS = ${OpenCV_INCLUDE_DIRS}")
+message(STATUS "OpenCV_LIBS = ${OpenCV_LIBS}")
+
 
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 

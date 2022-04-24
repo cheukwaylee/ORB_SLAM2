@@ -26,6 +26,8 @@
 #include <thread>
 #include <cstdlib>
 
+#include<unistd.h> // for usleep
+
 using namespace std;
 
 namespace ORB_SLAM2
